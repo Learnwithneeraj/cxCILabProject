@@ -24,16 +24,16 @@ stages:
     CX_TEAM_ID: "CxServer\\SP\\Company\\France\\Engineers\\Legacy-Team\\"
     CX_PRESET: "Checkmarx Default"
     CX_MODE: "CxSAST+CxOSA" # run a CxSAST and CxOSA scan
-    CX_SAST_HIGH: 0 # break the build if 1 high vuln has been found by CxSAST
-    CX_OSA_MEDIUM: 0 # break the build if 1 medium vuln has been found by CxOSA
-    #CX_CHECK_POLICY: "true" # break the build on one violated policy (CxM&O is required)
+    #CX_SAST_HIGH: 0 # break the build if 1 high vuln has been found by CxSAST
+    #CX_OSA_MEDIUM: 0 # break the build if 1 medium vuln has been found by CxOSA
+    CX_CHECK_POLICY: "true" # break the build on one violated policy (CxM&O is required)
     CX_SAST_EXCLUDE_FILES: "*.min.js" # exclude *.min.js files from SAST scan
     CX_EXECUTE_PACKAGE_DEPENDENCY: "true" # install dependencies with maven, npm, nuget if any 
     # please consult CxHelpers repo for better advanced customization
     # https://gitlab.com/cxrepositories/cxutilities/cxhelpers
   extends: .checkmarxCommitTpl
 
-🤞Checkmarx MR:
+🤞Checkmarx on MR:
   stage: test
   only:
     - merge_request  
@@ -42,8 +42,9 @@ stages:
     CX_TEAM_ID: "CxServer\\SP\\Company\\France\\Engineers\\Legacy-Team\\"
     CX_PRESET: "Checkmarx Default"
     CX_MODE: "CxSAST+CxOSA"
-    CX_SAST_HIGH: 0
-    CX_OSA_MEDIUM: 0
+    #CX_SAST_HIGH: 0
+    #CX_OSA_MEDIUM: 0
+    CX_CHECK_POLICY: "true" 
     CX_SAST_EXCLUDE_FILES: "*.min.js"
     CX_EXECUTE_PACKAGE_DEPENDENCY: "true"
     CX_INCREMENTAL_SCAN: "false"
