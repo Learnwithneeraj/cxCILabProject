@@ -21,7 +21,7 @@ stages:
    - master  
   variables:
     CX_PROJECT_NAME: "CxGitlab"
-    CX_TEAM_ID: "CxServer\\SP\\Company\\France\\Engineers\\Legacy-Team\\"
+    CX_TEAM_ID: "CxServer\\SP\\Company\\jbrotsos\\"
     CX_PRESET: "Checkmarx Default"
     CX_MODE: "CxSAST+CxOSA" # run a CxSAST and CxOSA scan
     #CX_SAST_HIGH: 0 # break the build if 1 high vuln has been found by CxSAST
