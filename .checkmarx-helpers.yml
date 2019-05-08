@@ -548,6 +548,7 @@ variables:
 
       echo $GL_COMMENT_TOKEN
       echo $GL_URL
+      echo $CX_SUMMARY_MD
       
       curl -d "body=$1" \
       --request POST --header "PRIVATE-TOKEN: $GL_COMMENT_TOKEN" \
