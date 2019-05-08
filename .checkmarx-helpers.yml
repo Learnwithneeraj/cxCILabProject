@@ -41,7 +41,7 @@
     - break_build_prepare
     - add_info_to_commit "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
-    - break_build
+    #- break_build
 
 .checkmarxMergeRequestTpl:
   stage: test
@@ -59,7 +59,7 @@
     - break_build_prepare
     - add_info_to_merge_request "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
-    - break_build
+    #- break_build
 
 
 # =============================================================================
