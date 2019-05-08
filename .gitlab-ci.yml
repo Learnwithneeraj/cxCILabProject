@@ -9,11 +9,13 @@
 include: '.checkmarx-helpers.yml'
 
 stages:
+  - checkmarx scan
+  - build
   - test
   - deploy
 
 🤞Checkmarx:
-  stage: test
+  stage: checkmarx scan
   only:
    - master  
   variables:
@@ -31,12 +33,12 @@ stages:
   extends: .checkmarxCommitTpl
 
 🤞Checkmarx on MR:
-  stage: test
+  stage: checkmarx_scan
   only:
     - merge_request  
   variables:
     CX_PROJECT_NAME: "CxGitlab"
-    CX_TEAM_ID: "CxServer\\SP\\Company\\France\\Engineers\\Legacy-Team\\"
+    CX_TEAM_ID: "CxServer\\SP\\Company\\jbrotsos\\"
     CX_PRESET: "Checkmarx Default"
     CX_MODE: "CxSAST+CxOSA"
     #CX_SAST_HIGH: 0
@@ -47,10 +49,14 @@ stages:
     CX_INCREMENTAL_SCAN: "false"
   extends: .checkmarxMergeRequestTpl
 
-Deploy:
-  image: alpine
-  stage: deploy
+test_app:
+  stage: test
+  script: echo 'cx-test'
   only:
-    - "master"  
-  script:
-    - echo 'Deploy successful'
+    - merge_requests
+
+deploy:
+  stage: deploy
+  script: echo 'cx-stage'
+  only:
+    - "master"
