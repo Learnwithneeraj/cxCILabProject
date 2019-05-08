@@ -12,7 +12,7 @@ stages:
   - checkmarx scan
   - build
   - test
-  - deploy
+  - staging
 
 🤞Checkmarx:
   stage: checkmarx scan
@@ -49,6 +49,13 @@ stages:
     CX_INCREMENTAL_SCAN: "false"
   extends: .checkmarxMergeRequestTpl
 
+build_src:
+  stage: build
+  script: echo 'cx-scan'
+  only:
+    - merge_requests
+
+
 test_app:
   stage: test
   script: echo 'cx-test'
@@ -56,7 +63,7 @@ test_app:
     - merge_requests
 
 deploy:
-  stage: deploy
+  stage: staging
   script: echo 'cx-stage'
   only:
     - "master"
