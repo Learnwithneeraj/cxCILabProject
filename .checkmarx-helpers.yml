@@ -1,0 +1,576 @@
+# =============================================================================
+# ## Checkmarx Helpers
+# 
+# This script is delivered "as-is" with no Checkmarx support
+# =============================================================================
+
+.checkmarxCommitTpl:
+  stage: test
+  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
+  variables:
+    # CX_USERNAME: mandatory, recommended to be stored as environment variable
+    # CX_PASSWORD: mandatory, recommended to be stored as environment variable
+    # CX_SERVER_URI: mandatory, recommended to be stored as environment variable
+    # CX_PROJECT_NAME: mandatory, for example: "CxGitlabDemo"
+    # CX_TEAM_ID: mandatory, For example: "CxServer\\SP\\Engineers\\CxTeam\\"
+    
+    CX_MODE: "CxSAST+CxOSA" # Can be "CxSAST+CxOSA", "CxSAST", "CxOSA"
+    CX_ASYNC: "false" # For Async mode. Default is "false"
+    CX_INCREMENTAL_SCAN: 'false' # Run SAST incremental scan if true
+    CX_PRESET: "Checkmarx Default" # Mandatory param, 'Checkmarx Default' by default
+    
+    # CX_SAST_EXCLUDE_FOLDER: ""
+    # CX_SAST_EXCLUDE_FILES: ""
+    # CX_OSA_EXCLUDE_FOLDER: ""
+    # CX_OSA_EXCLUDE_FILES: ""
+    # CX_OSA_INCLUDE_FILES: ""
+    
+    # CX_CHECK_POLICY: "true" # Break the build if the CxOSA policy is violated (v8.9)
+    # CX_SAST_HIGH: 0 # Threshold on High SAST vulnerabilities
+    # CX_OSA_HIGH: 0 # Threshold on High OSA vulnerabilities
+    
+    # CX_EXECUTE_PACKAGE_DEPENDENCY: "true" retrieve all supported package dependencies before performing OSA scan
+    
+    # Documentation : 
+    # https://checkmarx.atlassian.net/wiki/spaces/KC/pages/52560015/CxConsole+CxSAST+CLI
+  script:
+    - cxsast_restapi_login
+    - cxarm_restapi_login
+    - cx_scan
+    - cx_summary
+    - break_build_prepare
+    - add_info_to_commit "$CX_SUMMARY_MD"
+    - echo -e "$CX_SUMMARY_CONSOLE"
+    - break_build
+
+.checkmarxMergeRequestTpl:
+  stage: test
+  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
+  variables:
+    CX_MODE: "CxSAST+CxOSA" # Can be "CxSAST+CxOSA", "CxSAST", "CxOSA"
+    CX_ASYNC: "false" # For Async mode. Default is "false"
+    CX_INCREMENTAL_SCAN: 'true' # Run SAST incremental scan if true
+    CX_PRESET: "Checkmarx Default" # Mandatory param, 'Checkmarx Default' by default
+  script:
+    - cxsast_restapi_login
+    - cxarm_restapi_login
+    - cx_scan
+    - cx_summary
+    - break_build_prepare
+    - add_info_to_merge_request "$CX_SUMMARY_MD"
+    - echo -e "$CX_SUMMARY_CONSOLE"
+    - break_build
+
+
+# =============================================================================
+# ## Checkmarx helpers
+# =============================================================================
+.checkmarx_helpers: &checkmarx_helpers |
+
+    # Run a CxSAST/CxOSA scan thanks to CxConsole
+    function cx_scan() {
+        echo -e "cx_scan init"
+        echo -e "CX_MODE is "$CX_MODE
+
+        case "$CX_MODE" in
+        "CxSAST+CxOSA")
+            CX_CONSOLE_MODE="Scan"
+            CX_OSA_SCAN="true"
+            CX_PROJECT_DIR=$CI_PROJECT_DIR
+            CX_OSA_DIR=$CI_PROJECT_DIR            
+            ;;
+        "CxSAST")
+            CX_CONSOLE_MODE="Scan"
+            CX_OSA_SCAN="false"
+            CX_PROJECT_DIR=$CI_PROJECT_DIR
+            ;;
+        "CxOSA")
+            CX_CONSOLE_MODE="OsaScan"
+            CX_OSA_SCAN="true"
+            CX_OSA_DIR=$CI_PROJECT_DIR
+
+            cxsast_get_team_id
+            cxsast_get_project_id
+            ;;
+        esac
+
+        if [[ $CX_ASYNC == "true" ]]; then 
+            echo -e "Async mode is requested"
+            CX_CONSOLE_MODE="Async$CX_CONSOLE_MODE"
+            CX_RUN_REPORT="" # Asynchronous run does not allow report creation
+        else
+            echo -e "Sync mode is requested"
+            CX_RUN_REPORT=' -ReportXML "/root/cxsast_report.xml"'
+        fi
+    
+        echo -e "CX_CONSOLE_MODE is $CX_CONSOLE_MODE"
+        
+        CX_RUN_PARAMETERS="-locationtype folder -locationpath \"$CX_PROJECT_DIR\" -projectname \"$CX_TEAM_ID$CX_PROJECT_NAME\""
+        CX_RUN_PARAMETERS+=$CX_RUN_REPORT
+
+        CX_RUN_PARAMETERS+=$([[ "$CX_SAST_EXCLUDE_FILES" ]] && echo " -LocationFilesExclude \"$CX_SAST_EXCLUDE_FILES\"" || echo "")
+        CX_RUN_PARAMETERS+=$([[ "$CX_SAST_EXCLUDE_FOLDER" ]] && echo " -locationPathExclude \"$CX_SAST_EXCLUDE_FOLDER\"" || echo "")
+        CX_RUN_PARAMETERS+=$([[ "$CX_OSA_EXCLUDE_FILES" ]] && echo " -OsaFilesExclude \"$CX_OSA_EXCLUDE_FILES\"" || echo "")
+        CX_RUN_PARAMETERS+=$([[ "$CX_OSA_INCLUDE_FILES" ]] && echo " -OsaFilesInclude \"$CX_OSA_INCLUDE_FILES\"" || echo "")
+        CX_RUN_PARAMETERS+=$([[ "$CX_OSA_EXCLUDE_FOLDER" ]] && echo " -OsaPathExclude \"$CX_OSA_EXCLUDE_FOLDER\"" || echo "")
+
+        CX_RUN_PARAMETERS+=$([ "$CX_OSA_SCAN" == "true" ] && echo " -enableOsa -OsaScanDepth 10 -OsaLocationPath \"$CX_OSA_DIR\"" || echo "")
+        CX_RUN_PARAMETERS+=$([ "$CX_INCREMENTAL_SCAN" == "true" ] && echo " -Incremental " || echo "")
+        CX_RUN_PARAMETERS+=$([ "$CX_EXECUTE_PACKAGE_DEPENDENCY" == "true" ] && echo " -executepackagedependency " || echo "")
+
+        echo -e "CX_RUN_PARAMETERS is $CX_RUN_PARAMETERS"
+        
+        runCxConsole.sh $CX_CONSOLE_MODE -v -cxserver "$CX_SERVER_URI" -cxuser "$CX_USERNAME" -cxpassword "$CX_PASSWORD" $CX_RUN_PARAMETERS -preset "$CX_PRESET"
+         
+        if [[ $CX_ASYNC == "true" ]]; then 
+            return # Asynchronous run does not allow report creation
+        fi
+    
+        if [[ $CX_MODE == "CxOSA" ]]; then 
+            return # No CxSAST report to parse
+        fi    
+    
+        #cat ~/cxsast_report.xml
+
+        # Parse XML report
+        CX_FILES_SCANNED=$(xmllint --xpath "string(//CxXMLResults/@FilesScanned)" ~/cxsast_report.xml)
+        CX_INITIATOR_NAME=$(xmllint --xpath "string(//CxXMLResults/@InitiatorName)" ~/cxsast_report.xml)
+        CX_LOC=$(xmllint --xpath "string(//CxXMLResults/@LinesOfCodeScanned)" ~/cxsast_report.xml)
+        CX_OWNER=$(xmllint --xpath "string(//CxXMLResults/@Owner)" ~/cxsast_report.xml)
+        CX_SCAN_ID=$(xmllint --xpath "string(//CxXMLResults/@ScanId)" ~/cxsast_report.xml)
+        CX_PRESET=$(xmllint --xpath "string(//CxXMLResults/@Preset)" ~/cxsast_report.xml)
+        CX_PROJECT_ID=$(xmllint --xpath "string(//CxXMLResults/@ProjectId)" ~/cxsast_report.xml)
+        CX_PROJECT_NAME=$(xmllint --xpath "string(//CxXMLResults/@ProjectName)" ~/cxsast_report.xml)
+        CX_REPORT_CREATION_TIME=$(xmllint --xpath "string(//CxXMLResults/@ReportCreationTime)" ~/cxsast_report.xml)
+        CX_SCAN_COMMENTS=$(xmllint --xpath "string(//CxXMLResults/@ScanComments)" ~/cxsast_report.xml)
+        CX_SCAN_START=$(xmllint --xpath "string(//CxXMLResults/@ScanStart)" ~/cxsast_report.xml)
+        CX_SCAN_TIME=$(xmllint --xpath "string(//CxXMLResults/@ScanTime)" ~/cxsast_report.xml)
+        CX_TEAM=$(xmllint --xpath "string(//CxXMLResults/@Team)" ~/cxsast_report.xml)
+        CX_TEAM_FULLPATH=$(xmllint --xpath "string(//CxXMLResults/@TeamFullPathOnReportDate)" ~/cxsast_report.xml)
+        CX_VERSION=$(xmllint --xpath "string(//CxXMLResults/@CheckmarxVersion)" ~/cxsast_report.xml)
+
+        echo -e "CX_PROJECT_ID is "$CX_PROJECT_ID
+
+        CX_SAST_REPORT_URI="$CX_SERVER_URI/CxWebClient/ViewerMain.aspx?scanId=$CX_SCAN_ID&ProjectID=$CX_PROJECT_ID"
+    }
+
+    # Login to restapi. You will get Access Token CX_AUTH_TOKEN
+    function cxsast_restapi_login() {
+        echo "Logging in as $CX_USERNAME..."
+        auth_response=$(curl --url $CX_SERVER_URI/cxrestapi/auth/identity/connect/token \
+          --header 'Cache-Control: no-cache' --header 'Content-Type: application/x-www-form-urlencoded' \
+          --data-urlencode "username=$CX_USERNAME" --data-urlencode "password=$CX_PASSWORD" \
+          --data 'grant_type=password&scope=sast_rest_api&client_id=resource_owner_client&client_secret=014DF517-39D1-4453-B7B3-9930C563627C')
+        
+        # check for errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        # grab the auth token
+        CX_AUTH_TOKEN=$(echo $auth_response | jq -r '.access_token')
+
+        if [[ -z $CX_AUTH_TOKEN ]]; then echo "Can not authenticate: $auth_response"; exit 1; fi
+        
+        echo -e "login ok, auth_token retrieved"
+    }
+
+    # Login to CxARM REST API. You will get Access Token CXARM_AUTH_TOKEN
+    function cxarm_restapi_login() {
+        echo "Logging in as $CX_USERNAME..."
+
+        auth_arm_response=$(curl --url $CX_SERVER_URI/cxrestapi/auth/identity/connect/token \
+          --header 'Cache-Control: no-cache' --header 'Content-Type: application/x-www-form-urlencoded' \
+          --data-urlencode "username=$CX_USERNAME" --data-urlencode "password=$CX_PASSWORD" \
+          --data 'grant_type=password&scope=cxarm_api&client_id=resource_owner_client&client_secret=014DF517-39D1-4453-B7B3-9930C563627C')
+
+
+        # check for errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        # grab the auth token
+        CXARM_AUTH_TOKEN=$(echo $auth_arm_response | jq -r '.access_token')
+
+        if [[ -z $CXARM_AUTH_TOKEN ]]; then echo "Can not authenticate: $auth_arm_response"; exit 1; fi
+        
+        echo -e "login ok, CxARM auth_token retrieved"
+    }
+
+    function cx_summary() {
+        echo -e "cx_summary init"
+
+        if [[ $CX_ASYNC == "true" ]]; then 
+            CX_SUMMARY_MD="$CX_MODE scan has been run in async mode."
+            CX_SUMMARY_CONSOLE=$CX_SUMMARY_MD            
+            return
+        fi
+
+        if [[ $CX_MODE == "CxSAST+CxOSA" || $CX_MODE == "CxSAST" ]]; then 
+            get_cxsast_summary "$CX_SCAN_ID"
+        fi
+
+        if [[ $CX_MODE == "CxSAST+CxOSA" || $CX_MODE == "CxOSA" ]]; then 
+            echo "Project ID is $CX_PROJECT_ID"
+            get_cxosa_summary "$CX_PROJECT_ID"
+        fi
+
+        case "$CX_MODE" in
+        "CxSAST+CxOSA")
+            CX_SUMMARY_MD=$CX_SAST_SUMMARY_MD$CX_OSA_SUMMARY_MD
+            CX_SUMMARY_CONSOLE=$CX_SAST_SUMMARY_CONSOLE"\n\n"$CX_OSA_SUMMARY_CONSOLE
+            ;;
+        "CxSAST")
+            CX_SUMMARY_MD=$CX_SAST_SUMMARY_MD
+            CX_SUMMARY_CONSOLE=$CX_SAST_SUMMARY_CONSOLE
+            ;;
+        "CxOSA")
+            CX_SUMMARY_MD=$CX_OSA_SUMMARY_MD
+            CX_SUMMARY_CONSOLE=$CX_OSA_SUMMARY_CONSOLE
+            ;;
+        esac
+    }
+
+    # Get CxSast findings presented in a markdown table CX_SAST_SUMMARY_MD & url to full report CX_SAST_REPORT_URI
+    function get_cxsast_summary() {
+        echo "Get Summary for scan $CX_SCAN_ID..."
+        
+        summary=$(curl --url $CX_SERVER_URI/cxrestapi/finishedScans/$CX_SCAN_ID/results?expand=SummarizeBySeverityAndState \
+          --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+        
+        # check for curl errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        CX_SAST_REPORT_URI_MD=$(echo $CX_SAST_REPORT_URI | sed 's/&/\%26/g;') # To be Markdown compliant
+
+        CX_SAST_HIGH_NEW=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "High")   | .statuses[] | select(.name == "New") | .count|tonumber')
+        CX_SAST_HIGH_FIXED=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "High")   | .statuses[] | select(.name == "Fixed") | .count|tonumber')
+        CX_SAST_HIGH_RECURRENT=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "High")   | .statuses[] | select(.name == "Recurrent") | .count|tonumber')
+        CX_SAST_HIGH_TOTAL=$(($CX_SAST_HIGH_NEW+$CX_SAST_HIGH_FIXED+$CX_SAST_HIGH_RECURRENT))
+        CX_SAST_HIGH_FOUND=$(($CX_SAST_HIGH_NEW+$CX_SAST_HIGH_RECURRENT))
+
+        CX_SAST_MEDIUM_NEW=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "Medium")   | .statuses[] | select(.name == "New") | .count|tonumber')
+        CX_SAST_MEDIUM_FIXED=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "Medium")   | .statuses[] | select(.name == "Fixed") | .count|tonumber')
+        CX_SAST_MEDIUM_RECURRENT=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "Medium")   | .statuses[] | select(.name == "Recurrent") | .count|tonumber')
+        CX_SAST_MEDIUM_TOTAL=$(($CX_SAST_MEDIUM_NEW+$CX_SAST_MEDIUM_FIXED+$CX_SAST_MEDIUM_RECURRENT))
+        CX_SAST_MEDIUM_FOUND=$(($CX_SAST_MEDIUM_NEW+$CX_SAST_MEDIUM_RECURRENT))
+
+        CX_SAST_LOW_NEW=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "Low")   | .statuses[] | select(.name == "New") | .count|tonumber')
+        CX_SAST_LOW_FIXED=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "Low")   | .statuses[] | select(.name == "Fixed") | .count|tonumber')
+        CX_SAST_LOW_RECURRENT=$(echo $summary | jq -r '.resultDistribution[]  | select(.severity.name == "Low")   | .statuses[] | select(.name == "Recurrent") | .count|tonumber')
+        CX_SAST_LOW_TOTAL=$(($CX_SAST_LOW_NEW+$CX_SAST_LOW_FIXED+$CX_SAST_LOW_RECURRENT))
+        CX_SAST_LOW_FOUND=$(($CX_SAST_LOW_NEW+$CX_SAST_LOW_RECURRENT))
+
+        CX_SAST_TOTAL=$(($CX_SAST_HIGH_TOTAL+$CX_SAST_MEDIUM_TOTAL+$CX_SAST_LOW_TOTAL))
+
+        if [[ $CX_SAST_TOTAL == 0 ]]; then 
+            CX_SAST_SUMMARY_CONSOLE='No vuln found by CxSAST'; 
+            CX_SAST_SUMMARY_MD=$CX_SAST_SUMMARY_CONSOLE
+        else 
+            echo -e 'CxSAST findings: '$CX_HIGH_TOTAL' high, '$CX_MEDIUM_TOTAL' medium, '$CX_LOW_TOTAL' low'; 
+            
+            CX_SAST_SUMMARY=$'| Severity | New | Fixed | Recurrent |\n';
+            CX_SAST_SUMMARY+=$'| ---- | ---- | ---- | ---- | \n';
+            if [[ $CX_SAST_HIGH_TOTAL -gt 0 ]]; then 
+                CX_SAST_SUMMARY+='| 😱 High | '$CX_SAST_HIGH_NEW' | '$CX_SAST_HIGH_FIXED' | '$CX_SAST_HIGH_RECURRENT$' | \n';
+            fi;
+    
+            if [[ $CX_SAST_MEDIUM_TOTAL -gt 0 ]]; then 
+                CX_SAST_SUMMARY+='| 🤔 Medium | '$CX_SAST_MEDIUM_NEW' | '$CX_SAST_MEDIUM_FIXED' | '$CX_SAST_MEDIUM_RECURRENT$' | \n';
+            fi;
+            
+            if [[ $CX_LOW_TOTAL -gt 0 ]]; then 
+                CX_SAST_SUMMARY+='| 😮 Low | '$CX_SAST_LOW_NEW' | '$CX_SAST_LOW_FIXED' | '$CX_SAST_LOW_RECURRENT$' | \n';
+            fi;
+
+            CX_SAST_SUMMARY+=$'\n';
+            
+            CX_SAST_SUMMARY_MD=$'# Checkmarx SAST findings\n\n'
+            CX_SAST_SUMMARY_MD+=$CX_SAST_SUMMARY
+            CX_SAST_SUMMARY_MD+=$'\n'
+            CX_SAST_SUMMARY_MD+=$'[Analyze SAST results]('$CX_SAST_REPORT_URI_MD$')\n\n';
+            CX_SAST_SUMMARY_CONSOLE="----------------------\nCHECKMARX SAST RESULTS\n----------------------\n\n"$CX_SAST_SUMMARY'Full report ... '$CX_SAST_REPORT_URI
+        fi
+    }
+    
+    # Get CxOsa findings presented in a markdown table CX_OSA_SUMMARY_MD & url to full report CX_OSA_REPORT_URI ---
+    function get_cxosa_summary() {        
+        echo -e "Get CxOSA summary for project $CX_PROJECT_ID..."
+        scanlist=$(curl --url $CX_SERVER_URI/cxrestapi/osa/scans?projectid=$CX_PROJECT_ID \
+          --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+        
+        # check for curl errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        CX_OSA_SCAN_ID=$(echo $scanlist | jq -r '.[0].id')
+        CX_OSA_REPORT_URI=$CX_SERVER_URI'/CxWebClient/SPA/#/viewer/project/'$CX_PROJECT_ID'/OSA/libraries'
+        
+        echo -e "Last OSA Scan ID for project $CX_PROJECT_ID is $CX_OSA_SCAN_ID"
+        echo -e $CX_OSA_REPORT_URI
+
+        summary=$(curl --url $CX_SERVER_URI/cxrestapi/osa/reports?scanId=$CX_OSA_SCAN_ID \
+          --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+        
+        # check for curl errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        CX_OSA_REPORT_URI_MD=$(echo $CX_OSA_REPORT_URI | sed 's/&/\%26/g;') # To be Markdown compliant
+
+        CX_OSA_vulnerabilityScore=$(echo $summary | jq -r '.vulnerabilityScore')
+
+        CX_OSA_totalLibraries=$(echo $summary | jq -r '.totalLibraries|tonumber')
+        CX_OSA_highVulnerabilityLibraries=$(echo $summary | jq -r '.highVulnerabilityLibraries|tonumber')
+        CX_OSA_mediumVulnerabilityLibraries=$(echo $summary | jq -r '.mediumVulnerabilityLibraries|tonumber')
+        CX_OSA_lowVulnerabilityLibraries=$(echo $summary | jq -r '.lowVulnerabilityLibraries|tonumber')
+        CX_OSA_VulnerableLibraries=$(($CX_OSA_highVulnerabilityLibraries+$CX_OSA_mediumVulnerabilityLibraries+CX_OSA_lowVulnerabilityLibraries))
+        
+        CX_OSA_nonVulnerableLibraries=$(echo $summary | jq -r '.nonVulnerableLibraries|tonumber')
+        CX_OSA_vulnerableAndUpdated=$(echo $summary | jq -r '.vulnerableAndUpdated|tonumber')
+        CX_OSA_vulnerableAndOutdated=$(echo $summary | jq -r '.vulnerableAndOutdated|tonumber')
+
+        CX_OSA_totalHighVulnerabilities=$(echo $summary | jq -r '.totalHighVulnerabilities|tonumber')
+        CX_OSA_totalMediumVulnerabilities=$(echo $summary | jq -r '.totalMediumVulnerabilities|tonumber')
+        CX_OSA_totalLowVulnerabilities=$(echo $summary | jq -r '.totalLowVulnerabilities|tonumber')
+        CX_OSA_totalVulnerabilities=$(($CX_OSA_totalHighVulnerabilities+$CX_OSA_totalMediumVulnerabilities+$CX_OSA_totalLowVulnerabilities))
+
+        if [[ $CX_OSA_totalVulnerabilities == 0 ]]; then 
+            CX_OSA_SUMMARY_CONSOLE='No vuln found by CxOSA. Vulnerability score is '$CX_OSA_vulnerabilityScore; 
+            CX_OSA_SUMMARY_MD=$CX_OSA_SUMMARY_CONSOLE
+        else 
+            echo -e 'CxOSA findings: '$CX_OSA_VulnerableLibraries' vulnerable libraries, '$CX_OSA_totalVulnerabilities'vulnerabilities'; 
+
+            vulnerabilities=$(curl --url "$CX_SERVER_URI/cxrestapi/osa/vulnerabilities?itemsPerPage=10000&scanId=$CX_OSA_SCAN_ID" \
+              --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+            
+            # check for curl errors
+            err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+            CX_OSA_SUMMARY=$'| Vulnerability | Publish date | Library | Severity\n';
+            CX_OSA_SUMMARY+=$'| ---- | ---- | ---- | :----: | \n';
+            CX_OSA_SUMMARY+=$(echo $vulnerabilities | jq --arg pipe "| " -r '.[]|"\($pipe)\(.cveName) \($pipe)\(.publishDate | strptime("%Y-%m-%dT%H:%M:%S")|strftime("%m/%d/%Y") ) \($pipe)\(.libraryId) \($pipe)\(.severity.name) \($pipe)"')
+            CX_OSA_SUMMARY+=$'\n';
+            
+            # Adding emoticons to severity
+            CX_OSA_SUMMARY=${CX_OSA_SUMMARY//High/😱High}
+            CX_OSA_SUMMARY=${CX_OSA_SUMMARY//Medium/🤔 Medium}
+            CX_OSA_SUMMARY=${CX_OSA_SUMMARY//Low/😮 Low}
+            
+            # Replacing LibraryIds by LibraryNames
+
+            libraries=$(curl --url "$CX_SERVER_URI/cxrestapi/osa/libraries?itemsPerPage=10000&scanId=$CX_OSA_SCAN_ID" \
+              --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+            
+            # check for curl errors
+            err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+    
+            libraries_csv+=$(echo $libraries | jq -r '.[]|"\(.id),\(.name)"')
+
+            while IFS=',' read -r id name
+            do 
+                CX_OSA_SUMMARY=${CX_OSA_SUMMARY//$id/$name}
+            done <<< "$libraries_csv"            
+
+            CX_OSA_SUMMARY_MD=$'# Checkmarx OSA findings\n\n'
+            CX_OSA_SUMMARY_MD+=$CX_OSA_SUMMARY
+            CX_OSA_SUMMARY_MD+=$'\n'
+            CX_OSA_SUMMARY_MD+=$'[Analyze OSA resuts]('$CX_OSA_REPORT_URI_MD$')\n\n';
+            CX_OSA_SUMMARY_CONSOLE="----------------------\nCHECKMARX OSA RESULTS\n----------------------\n\n"$CX_OSA_SUMMARY'Full report ... '$CX_OSA_REPORT_URI   
+        fi
+        
+        echo -e "$CX_OSA_SUMMARY_CONSOLE"
+    }    
+
+    # In case of CxOSA scan only, find project id through API and create default project if needed
+    function cxsast_get_project_id() {
+        echo "Trying to create a project. In the same time, test existence"
+
+        create_project=$(curl --data-urlencode "name=$CX_PROJECT_NAME" --data-urlencode "owningTeam=$CX_TEAM_INTERNAL_ID" --data-urlencode "isPublic=true" \
+          --request POST --url $CX_SERVER_URI/cxrestapi/projects \
+          --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache')
+
+        # check for curl errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        messagecode=$(echo $create_project | jq -r '.messageCode')
+
+        if [[ $messagecode == 12108 ]]; then 
+            # Project name already exists
+            # Try to find it 
+            all_projects=$(curl --url $CX_SERVER_URI/cxrestapi/projects \
+              --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache')
+            
+            CX_PROJECT_ID=$(echo $all_projects | jq -r --arg project_name "$CX_PROJECT_NAME" '.[] | select(.name == $project_name) | .id')
+            
+            if [[ -z $CX_PROJECT_ID ]]; then echo "Project $CX_PROJECT_NAME exists but is not accesible by user $CX_USERNAME"; exit 1; fi
+        else
+            CX_PROJECT_ID=$(echo $create_project | jq -r '.id')
+        fi
+        
+        echo -e "PROJECT_ID is "$CX_PROJECT_ID
+    }
+
+    function cxsast_get_team_id() {
+        echo "Get team id"
+
+        all_teams=$(curl --url $CX_SERVER_URI/cxrestapi/auth/teams \
+          --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+                
+        # check for curl errors
+        err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+
+        all_teams_no_backslash=${all_teams//\\}
+        all_teams_no_backslash=${all_teams_no_backslash//-}
+
+        team_no_backslash=${CX_TEAM_ID//\\}
+        team_no_backslash=${team_no_backslash//-}
+
+        CX_TEAM_INTERNAL_ID=$(echo $all_teams_no_backslash | jq -r --arg team "$team_no_backslash" '.[] | select(.fullName == $team) | .id')
+        echo -e "Internal team ID is "$CX_TEAM_INTERNAL_ID
+    }
+
+    function policies_check() {
+        echo -e "Check Policies for project $CX_PROJECT_ID"
+        
+        # check violations
+        policies=$(curl --url $CXARM_SERVER_URI/cxarm/policymanager/projects/$CX_PROJECT_ID/violations \
+          --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CXARM_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
+                    
+        CX_POLICY_VIOLATIONS=$(echo $policies | jq -r '. | length')
+
+        newline='\n- '
+        CX_ALL_POLICIES_tmp=$(echo $policies | jq --arg pipe "|" -r '.[]|"\($pipe)\(.policyName)"')
+        CX_ALL_POLICIES="${CX_ALL_POLICIES_tmp//|/$newline}"
+        echo -e $CX_ALL_POLICIES
+    }
+    
+    function break_build() {
+        if [ $CX_BREAK_BUILD_ERROR -gt 0 ]; then 
+            echo -e $CX_BREAK_BUILD_MESSAGE
+            exit $CX_BREAK_BUILD_ERROR; 
+        fi
+    }
+    
+    function break_build_prepare() {
+        echo -e "Break build"
+        CX_BREAK_BUILD_ERROR=0
+        CX_BREAK_BUILD_MESSAGE=""
+
+        if [[ $CX_MODE == "CxSAST+CxOSA" || $CX_MODE == "CxSAST" ]]; then 
+            # SAST Medium
+            if [ -n "$CX_SAST_MEDIUM" ]; then 
+                echo -e "CX_SAST_MEDIUM_FOUND is $CX_SAST_MEDIUM_FOUND"
+                echo -e "Threshold is $CX_SAST_MEDIUM"
+                
+                if [ $CX_SAST_MEDIUM_FOUND -gt $CX_SAST_MEDIUM ]; then 
+                    CX_BREAK_BUILD_MESSAGE="Break build on CxSAST MEDIUM vulnerability threshold"
+                    CX_BREAK_BUILD_ERROR=11
+                fi
+            fi     
+            
+            # SAST High
+            if [ -n "$CX_SAST_HIGH" ]; then 
+                echo -e "CX_SAST_HIGH_FOUND is $CX_SAST_HIGH_FOUND"
+                echo -e "Threshold is $CX_SAST_HIGH"
+                
+                if [ $CX_SAST_HIGH_FOUND -gt $CX_SAST_HIGH ]; then 
+                    CX_BREAK_BUILD_MESSAGE="Break build on CxSAST HIGH vulnerability threshold"
+                    CX_BREAK_BUILD_ERROR=10 # exit code description https://checkmarx.atlassian.net/wiki/spaces/KC/pages/914096139/CxSAST+CxOSA+Scan+v8.9.0
+                fi
+            fi
+        fi
+
+        if [[ $CX_MODE == "CxSAST+CxOSA" || $CX_MODE == "CxOSA" ]]; then 
+            # OSA Medium
+            if [ -n "$CX_OSA_MEDIUM" ]; then 
+                echo -e "CX_OSA_mediumVulnerabilityLibraries is $CX_OSA_mediumVulnerabilityLibraries"
+                echo -e "Threshold is $CX_OSA_MEDIUM"
+                
+                if [ $CX_OSA_mediumVulnerabilityLibraries -gt $CX_OSA_MEDIUM ]; then 
+                    CX_BREAK_BUILD_MESSAGE="Break build on CxOSA MEDIUM vulnerability threshold"
+                    CX_BREAK_BUILD_ERROR=14
+                fi
+            fi
+
+            # OSA High
+            if [ -n "$CX_OSA_HIGH" ]; then 
+                echo -e "CX_OSA_highVulnerabilityLibraries is $CX_OSA_highVulnerabilityLibraries"
+                echo -e "Threshold is $CX_OSA_HIGH"
+                
+                if [ $CX_OSA_highVulnerabilityLibraries -gt $CX_OSA_HIGH ]; then 
+                    CX_BREAK_BUILD_MESSAGE="Break build on CxOSA HIGH vulnerability threshold"
+                    CX_BREAK_BUILD_ERROR=13
+                fi
+            fi  
+        fi
+
+        # Policy Violation
+        if [ -n "$CX_CHECK_POLICY" ]; then 
+            echo -e "Break build on Policy Check"
+            policies_check
+            
+            if [ $CX_POLICY_VIOLATIONS -gt 0 ]; then 
+                CX_BREAK_BUILD_MESSAGE="Break build on "$CX_POLICY_VIOLATIONS" violated "
+                if [ $CX_POLICY_VIOLATIONS -gt 1 ]; then 
+                    CX_BREAK_BUILD_MESSAGE+='policies'
+                else
+                    CX_BREAK_BUILD_MESSAGE+='policy'
+                fi
+                CX_BREAK_BUILD_MESSAGE+=$'\n'
+                CX_BREAK_BUILD_MESSAGE+=$CX_ALL_POLICIES
+                CX_BREAK_BUILD_ERROR=18
+            fi
+        fi             
+   
+        if [ $CX_BREAK_BUILD_ERROR -gt 0 ]; then    
+            echo -e "Adding Break Build message to CX_SUMMARY_CONSOLE & CX_SUMMARY_MD"
+            
+            CX_BB_MESSAGE=$'-------------------------------------------------------------------\n'
+            CX_BB_MESSAGE+=$'------ 🔴 BREAK BUILD - CHECKMARX HAS FOUND POLICY VIOLATIONS 🔴 ------\n'
+            CX_BB_MESSAGE+=$'------------------------------------------------------------------\n'
+            CX_BB_MESSAGE+=$'\n'
+
+            CX_BREAK_BUILD_MESSAGE_MD=$(echo -e $CX_BREAK_BUILD_MESSAGE | sed 's/&/\%26/g;') # To be Markdown compliant
+
+            CX_BB_MESSAGE_MD=$'🔴 CHECKMARX HAS FOUND POLICY VIOLATIONS 🔴 \n\n'
+            CX_BB_MESSAGE_MD+=$CX_BREAK_BUILD_MESSAGE_MD
+            CX_BB_MESSAGE_MD+=$'\n\n'
+    
+            CX_SUMMARY_CONSOLE=$CX_BB_MESSAGE$CX_SUMMARY_CONSOLE
+            CX_SUMMARY_MD=$CX_BB_MESSAGE_MD$CX_SUMMARY_MD        
+        fi
+    }
+
+
+
+    
+# =============================================================================
+# ## Gitlab helpers
+# =============================================================================
+
+.gitlab_helpers: &gitlab_helpers |
+    # add notes to the commit
+    function add_info_to_commit() {
+      # usage: add_info_to_commit "Commit ! ✅"
+
+      curl -d "body=$1" \
+      --request POST --header "PRIVATE-TOKEN: $GL_COMMENT_TOKEN" \
+      $GL_URL/api/v4/projects/$CI_PROJECT_ID/repository/commits/$CI_COMMIT_SHORT_SHA/discussions?body=comment
+    }
+
+    # add notes to the merge request
+    function add_info_to_merge_request() {
+      curl -d "body=$1" \
+      --request POST --header "PRIVATE-TOKEN: $GL_COMMENT_TOKEN" \
+      $GL_URL/api/v4/projects/$CI_MERGE_REQUEST_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes?body=note
+    }
+
+    # add status to commit (in fact, not very useful) 
+    function add_status_to_commit() {
+      # https://docs.gitlab.com/ee/api/commits.html#post-the-build-status-to-a-commit
+      # usage : add_status_to_commit "failed sast scan" "failed" "https://checkmarx.com" "the description" 90
+      
+      curl -d "name=$1&state=$2&target_url=$3&description=$4&coverage=$5" \
+      --request POST --header "PRIVATE-TOKEN: $GL_COMMENT_TOKEN" \
+      $GL_URL/api/v4/projects/$CI_PROJECT_ID/statuses/$CI_COMMIT_SHORT_SHA
+    }
+
+before_script:
+  - *gitlab_helpers
+  - *checkmarx_helpers
