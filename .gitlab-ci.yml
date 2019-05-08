@@ -6,10 +6,7 @@
 # Feel free to fork and make your own
 # =============================================================================
 
-include:
-  - project: 'cxrepositories/cxutilities/cxhelpers'
-    ref: master
-    file: '.checkmarx-helpers.yml'
+include: '.checkmarx-helpers.yml'
 
 stages:
   - test
