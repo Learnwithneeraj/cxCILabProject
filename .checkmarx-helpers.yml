@@ -498,7 +498,7 @@ variables:
         fi
 
         # Policy Violation
-        if [ -n "$CX_CHECK_POLICY" ]; then 
+        if [ "$CX_CHECK_POLICY" = "true" ]; then 
             echo -e "Break build on Policy Check"
             policies_check
             
