@@ -546,7 +546,7 @@ variables:
     function add_info_to_commit() {
       # usage: add_info_to_commit "Commit ! ✅"
 
-      echo $$GL_COMMENT_TOKEN
+      echo $GL_COMMENT_TOKEN
       echo $GL_URL
       
       curl -d "body=$1" \
