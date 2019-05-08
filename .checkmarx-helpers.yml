@@ -5,7 +5,7 @@
 # =============================================================================
 
 .checkmarxCommitTpl:
-  stage: test
+  stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   variables:
     # CX_USERNAME: mandatory, recommended to be stored as environment variable
@@ -38,13 +38,13 @@
     - cxarm_restapi_login
     - cx_scan
     - cx_summary
-    - break_build_prepare
+    #- break_build_prepare
     - add_info_to_commit "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
     #- break_build
 
 .checkmarxMergeRequestTpl:
-  stage: test
+  stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   variables:
     CX_MODE: "CxSAST+CxOSA" # Can be "CxSAST+CxOSA", "CxSAST", "CxOSA"
@@ -56,7 +56,7 @@
     - cxarm_restapi_login
     - cx_scan
     - cx_summary
-    - break_build_prepare
+    #- break_build_prepare
     - add_info_to_merge_request "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
     #- break_build
