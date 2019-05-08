@@ -5,17 +5,11 @@
 # =============================================================================
 
 variables:
-    TEST: "this is a test"
-    
-.checkmarxCommitTpl:
-  stage: checkmarx scan
-  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
-  variables:
     # CX_USERNAME: mandatory, recommended to be stored as environment variable
     # CX_PASSWORD: mandatory, recommended to be stored as environment variable
     # CX_SERVER_URI: mandatory, recommended to be stored as environment variable
-    # CX_PROJECT_NAME: mandatory, for example: "CxGitlabDemo"
-    # CX_TEAM_ID: mandatory, For example: "CxServer\\SP\\Engineers\\CxTeam\\"
+    CX_PROJECT_NAME: $CI_PROJECT_NAME # mandatory, for example: "CxGitlabDemo"
+    CX_TEAM_ID: "\\CxServer" #mandatory, For example: "CxServer\\SP\\Engineers\\CxTeam\\"
     
     CX_MODE: "CxSAST+CxOSA" # Can be "CxSAST+CxOSA", "CxSAST", "CxOSA"
     CX_ASYNC: "false" # For Async mode. Default is "false"
@@ -28,33 +22,32 @@ variables:
     # CX_OSA_EXCLUDE_FILES: ""
     # CX_OSA_INCLUDE_FILES: ""
     
-    # CX_CHECK_POLICY: "true" # Break the build if the CxOSA policy is violated (v8.9)
+    CX_CHECK_POLICY: "false" # Break the build if the CxOSA policy is violated (v8.9)
     # CX_SAST_HIGH: 0 # Threshold on High SAST vulnerabilities
     # CX_OSA_HIGH: 0 # Threshold on High OSA vulnerabilities
     
     # CX_EXECUTE_PACKAGE_DEPENDENCY: "true" retrieve all supported package dependencies before performing OSA scan
     
+.checkmarxCommitTpl:
+  stage: checkmarx scan
+  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
+
     # Documentation : 
     # https://checkmarx.atlassian.net/wiki/spaces/KC/pages/52560015/CxConsole+CxSAST+CLI
   script:
-    - echo $TEST
     - cxsast_restapi_login
     - cxarm_restapi_login
     - cx_scan
     - cx_summary
-    #- break_build_prepare
+    - break_build_prepare
     - add_info_to_commit "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
-    #- break_build
+    - break_build
 
 .checkmarxMergeRequestTpl:
   stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
-  variables:
-    CX_MODE: "CxSAST+CxOSA" # Can be "CxSAST+CxOSA", "CxSAST", "CxOSA"
-    CX_ASYNC: "false" # For Async mode. Default is "false"
-    CX_INCREMENTAL_SCAN: 'true' # Run SAST incremental scan if true
-    CX_PRESET: "Checkmarx Default" # Mandatory param, 'Checkmarx Default' by default
+
   script:
     - cxsast_restapi_login
     - cxarm_restapi_login
