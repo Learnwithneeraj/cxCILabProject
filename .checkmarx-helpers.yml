@@ -4,7 +4,8 @@
 # This script is delivered "as-is" with no Checkmarx support
 # =============================================================================
 
-TEST="this is a test"
+variables.
+    TEST: "this is a test"
 .checkmarxCommitTpl:
   stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
