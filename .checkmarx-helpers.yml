@@ -4,6 +4,7 @@
 # This script is delivered "as-is" with no Checkmarx support
 # =============================================================================
 
+TEST="this is a test"
 .checkmarxCommitTpl:
   stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
@@ -34,6 +35,7 @@
     # Documentation : 
     # https://checkmarx.atlassian.net/wiki/spaces/KC/pages/52560015/CxConsole+CxSAST+CLI
   script:
+    - echo $TEST
     - cxsast_restapi_login
     - cxarm_restapi_login
     - cx_scan
