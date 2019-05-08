@@ -33,7 +33,7 @@ stages:
   extends: .checkmarxCommitTpl
 
 🤞Checkmarx on MR:
-  stage: checkmarx_scan
+  stage: checkmarx scan
   only:
     - merge_request  
   variables:
