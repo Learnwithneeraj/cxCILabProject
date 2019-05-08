@@ -17,7 +17,7 @@ variables:
     CX_PRESET: "Checkmarx Default" # Mandatory param, 'Checkmarx Default' by default
     
     # CX_SAST_EXCLUDE_FOLDER: ""
-    # CX_SAST_EXCLUDE_FILES: ""
+    CX_SAST_EXCLUDE_FILES: "*.min.js"
     # CX_OSA_EXCLUDE_FOLDER: ""
     # CX_OSA_EXCLUDE_FILES: ""
     # CX_OSA_INCLUDE_FILES: ""
