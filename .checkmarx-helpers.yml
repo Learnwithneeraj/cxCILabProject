@@ -124,11 +124,6 @@ variables:
 
         echo -e "CX_RUN_PARAMETERS is $CX_RUN_PARAMETERS"
         
-        echo $CX_SERVER_URI
-        echo $CX_USERNAME
-        echo $CX_PASSWORD
-        echo $CX_RUN_PARAMETERS
-        
         runCxConsole.sh $CX_CONSOLE_MODE -v -cxserver "$CX_SERVER_URI" -cxuser "$CX_USERNAME" -cxpassword "$CX_PASSWORD" $CX_RUN_PARAMETERS -preset "$CX_PRESET"
          
         if [[ $CX_ASYNC == "true" ]]; then 
