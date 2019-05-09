@@ -31,9 +31,6 @@ variables:
 .checkmarxCommitTpl:
   stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
-
-    # Documentation : 
-    # https://checkmarx.atlassian.net/wiki/spaces/KC/pages/52560015/CxConsole+CxSAST+CLI
   script:
     - cxsast_restapi_login
     - cxarm_restapi_login
@@ -43,7 +40,6 @@ variables:
     - add_info_to_commit "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
-    - pip scripts/checkmarx/requirments.txt
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
 
 .checkmarxMergeRequestTpl:
@@ -59,7 +55,6 @@ variables:
     - add_info_to_merge_request "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
-    - pip scripts/checkmarx/requirments.txt
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
 
 # =============================================================================
@@ -576,5 +571,7 @@ variables:
     }
 
 before_script:
+  - apt-get install python-pip
+  - pip scripts/checkmarx/requirments.txt
   - *gitlab_helpers
   - *checkmarx_helpers
