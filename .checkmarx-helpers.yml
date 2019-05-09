@@ -571,7 +571,7 @@ variables:
     }
 
 before_script:
-  - apt-get install python-pip
+  - apk add --update py-pip
   - pip scripts/checkmarx/requirments.txt
   - *gitlab_helpers
   - *checkmarx_helpers
