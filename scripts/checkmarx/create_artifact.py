@@ -95,7 +95,6 @@ args = sys.argv
 xml = args[1]
 
 with open(xml) as fd:
-	print (fd.read())
 	document = xmltodict.parse(fd.read())
 
 json_output = parse_xml(document)
