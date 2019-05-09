@@ -43,6 +43,8 @@ variables:
     - add_info_to_commit "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
+    - pip scripts/checkmarx/requirments.txt
+    - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
 
 .checkmarxMergeRequestTpl:
   stage: checkmarx scan
@@ -57,7 +59,8 @@ variables:
     - add_info_to_merge_request "$CX_SUMMARY_MD"
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
-
+    - pip scripts/checkmarx/requirments.txt
+    - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
 
 # =============================================================================
 # ## Checkmarx helpers
