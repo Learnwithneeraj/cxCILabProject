@@ -109,7 +109,7 @@ variables:
     
         echo -e "CX_CONSOLE_MODE is $CX_CONSOLE_MODE"
         
-        CX_RUN_PARAMETERS="-locationtype folder -locationpath \"$CX_PROJECT_DIR\" -projectname \"CxServer\\SP\\Company\\gitlab\\gest12\"" 
+        CX_RUN_PARAMETERS="-locationtype folder -locationpath \"$CX_PROJECT_DIR\" -projectname \"$CX_TEAM_ID$CX_PROJECT_NAME\"" 
         CX_RUN_PARAMETERS+=$CX_RUN_REPORT
 
         CX_RUN_PARAMETERS+=$([[ "$CX_SAST_EXCLUDE_FILES" ]] && echo " -LocationFilesExclude \"$CX_SAST_EXCLUDE_FILES\"" || echo "")
