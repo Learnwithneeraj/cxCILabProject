@@ -16,7 +16,7 @@ variables:
     CX_INCREMENTAL_SCAN: 'false' # Run SAST incremental scan if true
     CX_PRESET: "Checkmarx Default" # Mandatory param, 'Checkmarx Default' by default
     
-    # CX_SAST_EXCLUDE_FOLDER: ""
+    CX_SAST_EXCLUDE_FOLDER: "scripts,checkmarx"
     CX_SAST_EXCLUDE_FILES: "*.min.js"
     # CX_OSA_EXCLUDE_FOLDER: ""
     # CX_OSA_EXCLUDE_FILES: ""
@@ -41,6 +41,10 @@ variables:
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
+  dependencies: []
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
 
 .checkmarxMergeRequestTpl:
   stage: checkmarx scan
@@ -56,6 +60,11 @@ variables:
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
+  dependencies: []
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+
 
 # =============================================================================
 # ## Checkmarx helpers
@@ -572,6 +581,6 @@ variables:
 
 before_script:
   - apk add --update py-pip
-  - pip scripts/checkmarx/requirments.txt
+  - pip install -r scripts/checkmarx/requirments.txt
   - *gitlab_helpers
   - *checkmarx_helpers
