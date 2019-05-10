@@ -11,16 +11,9 @@ def create_json_file(output):
 #-----------------------------------------------------------------------------------------------------
 def convert_json(output):
     
-    print output
-    
     vulnList = []
 
-
     for result in output:
-        print "*************"
-        print result
-        print "*************"
-        
         vulnElement = {}
 
         vulnElement['tool'] = "CxOSA"
