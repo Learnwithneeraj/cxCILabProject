@@ -34,6 +34,9 @@ args = sys.argv
 
 osa_report = args[1]
 
+fd = open (osa_report, "r+")
+print fd.read()
+
 with open(osa_report) as fd:
 	out = convert_json(fd.read())
 
