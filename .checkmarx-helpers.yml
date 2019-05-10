@@ -586,5 +586,5 @@ variables:
     }
 
 before_script:
-    - *gitlab_helpers
-    - *checkmarx_helpers
+  - *gitlab_helpers
+  - *checkmarx_helpers
