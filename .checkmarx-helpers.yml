@@ -346,12 +346,10 @@ variables:
             vulnerabilities=$(curl --url "$CX_SERVER_URI/cxrestapi/osa/vulnerabilities?itemsPerPage=10000&scanId=$CX_OSA_SCAN_ID" \
               --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
             
-            echo $vulnerabilities;
-            
-            echo $vulnerabilities >> ~/cxosa_report.json
-            
             # check for curl errors
             err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
+            
+            echo $vulnerabilities | jq > ~/cxosa_report.json
 
             CX_OSA_SUMMARY=$'| Vulnerability | Publish date | Library | Severity\n';
             CX_OSA_SUMMARY+=$'| ---- | ---- | ---- | :----: | \n';
