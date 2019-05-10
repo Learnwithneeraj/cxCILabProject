@@ -15,4 +15,19 @@ public class BookDetail_jsp extends HttpJspBase {
 		out.println(a); // potential XSS
 		out.println(b); // printing a number
 	}
+	
+	private static void printSanitizedName (String str) {
+
+		String sanitizedUserData = Security.validName(str);
+		out.println (sanitizedUserData);
+	}
+
+	public static void loadData () {
+
+		String userData = request.getParameter("Data"); 
+		out.println (userData);
+
+		printSanitizedName(userData);
+	}
+
 }
