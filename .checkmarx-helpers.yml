@@ -34,8 +34,6 @@ variables:
   before_script:
     - apk add --update py-pip
     - pip install -r scripts/checkmarx/requirments.txt
-    - *gitlab_helpers
-    - *checkmarx_helpers
 
   script:
     - cxsast_restapi_login
@@ -60,8 +58,6 @@ variables:
   before_script:
     - apk add --update py-pip
     - pip install -r scripts/checkmarx/requirments.txt
-    - *gitlab_helpers
-    - *checkmarx_helpers
 
   script:
     - cxsast_restapi_login
