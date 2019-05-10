@@ -32,6 +32,8 @@ variables:
   stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   script:
+    - apk add --update py-pip
+    - pip install -r scripts/checkmarx/requirments.txt
     - cxsast_restapi_login
     - cxarm_restapi_login
     - cx_scan
@@ -52,6 +54,8 @@ variables:
   stage: checkmarx scan
   image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   script:
+    - apk add --update py-pip
+    - pip install -r scripts/checkmarx/requirments.txt
     - cxsast_restapi_login
     - cxarm_restapi_login
     - cx_scan
@@ -582,7 +586,5 @@ variables:
     }
 
 before_script:
-  - apk add --update py-pip
-  - pip install -r scripts/checkmarx/requirments.txt
   - *gitlab_helpers
   - *checkmarx_helpers
