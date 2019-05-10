@@ -41,6 +41,7 @@ variables:
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
+    - ls -la ~/cxosa_report.json
   dependencies: []
   artifacts:
     reports:
@@ -59,6 +60,7 @@ variables:
     - echo -e "$CX_SUMMARY_CONSOLE"
     - break_build
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
+    - ls -la ~/cxosa_report.json
   dependencies: []
   artifacts:
     reports:
@@ -343,6 +345,8 @@ variables:
               --header 'Accept: application/json;v=1.0' --header "Authorization: Bearer $CX_AUTH_TOKEN" --header 'Cache-Control: no-cache' --header 'Content-Type: application/json;v=1.0')
             
             echo $vulnerabilities;
+            
+            echo $vulnerabilities >> ~/cxosa_report.json
             
             # check for curl errors
             err=$?; if [[ $err -gt 0 ]]; then echo "Curl failed: $err"; cat $stderr_log; rm $stderr_log; exit $err; fi
