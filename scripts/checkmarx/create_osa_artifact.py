@@ -10,11 +10,17 @@ def create_json_file(output):
     file.close()
 #-----------------------------------------------------------------------------------------------------
 def convert_json(output):
-    dependReport = {}
+    
+    print output
+    
     vulnList = []
 
 
     for result in output:
+        print "*************"
+        print result
+        print "*************"
+        
         vulnElement = {}
 
         vulnElement['tool'] = "CxOSA"
@@ -33,9 +39,6 @@ def convert_json(output):
 args = sys.argv
 
 osa_report = args[1]
-
-fd = open (osa_report, "r+")
-print fd.read()
 
 with open(osa_report) as fd:
 	out = convert_json(fd.read())
