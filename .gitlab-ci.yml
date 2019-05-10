@@ -6,7 +6,6 @@
 # Feel free to fork and make your own
 # =============================================================================
 
-include: '.checkmarx-helpers.yml'
 
 stages:
   - checkmarx scan
@@ -15,13 +14,14 @@ stages:
   - staging
 
 🤞Checkmarx:
+  include: '.checkmarx-helpers.yml'
   stage: checkmarx scan
   only:
    - master  
-
   extends: .checkmarxCommitTpl
 
 🤞Checkmarx on MR:
+  include: '.checkmarx-helpers.yml'
   stage: checkmarx scan
   only:
     - merge_request  
