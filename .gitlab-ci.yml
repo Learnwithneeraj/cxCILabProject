@@ -15,14 +15,12 @@ stages:
   - staging
 
 🤞Checkmarx:
-  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   stage: checkmarx scan
   only:
    - master  
   extends: .checkmarxCommitTpl
 
 🤞Checkmarx on MR:
-  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   stage: checkmarx scan
   only:
     - merge_request  
@@ -30,18 +28,18 @@ stages:
 
 build_src:
   stage: build
-  script: echo 'cx-scan'
+  script: echo 'building'
   only:
     - merge_requests
 
 test_app:
   stage: test
-  script: echo 'cx-test'
+  script: echo 'testing'
   only:
     - merge_requests
 
 deploy:
   stage: staging
-  script: echo 'cx-stage'
+  script: echo 'deploying'
   only:
     - "master"
