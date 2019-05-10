@@ -34,6 +34,9 @@ variables:
   before_script:
     - apk add --update py-pip
     - pip install -r scripts/checkmarx/requirments.txt
+    - *gitlab_helpers
+    - *checkmarx_helpers
+
   script:
     - cxsast_restapi_login
     - cxarm_restapi_login
@@ -57,6 +60,9 @@ variables:
   before_script:
     - apk add --update py-pip
     - pip install -r scripts/checkmarx/requirments.txt
+    - *gitlab_helpers
+    - *checkmarx_helpers
+
   script:
     - cxsast_restapi_login
     - cxarm_restapi_login
@@ -589,7 +595,3 @@ variables:
       --request POST --header "PRIVATE-TOKEN: $GL_COMMENT_TOKEN" \
       $GL_URL/api/v4/projects/$CI_PROJECT_ID/statuses/$CI_COMMIT_SHORT_SHA
     }
-
-before_script:
-  - *gitlab_helpers
-  - *checkmarx_helpers
