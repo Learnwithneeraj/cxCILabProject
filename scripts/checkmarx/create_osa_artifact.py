@@ -40,7 +40,9 @@ args = sys.argv
 
 osa_report = args[1]
 
-with open(osa_report) as fd:
-	out = convert_json(fd.read())
+with open(osa_report) as json_file:
+    data = json.load(json_file)
+
+out = convert_json(data)
 
 create_json_file(out)
