@@ -6,7 +6,8 @@
 # Feel free to fork and make your own
 # =============================================================================
 
-
+include: '.checkmarx-helpers.yml'
+  
 stages:
   - checkmarx scan
   - build
@@ -14,14 +15,14 @@ stages:
   - staging
 
 🤞Checkmarx:
-  include: '.checkmarx-helpers.yml'
+  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   stage: checkmarx scan
   only:
    - master  
-#  extends: .checkmarxCommitTpl
+  extends: .checkmarxCommitTpl
 
 🤞Checkmarx on MR:
-  include: '.checkmarx-helpers.yml'
+  image: registry.gitlab.com/cxrepositories/cxutilities/cxdocker
   stage: checkmarx scan
   only:
     - merge_request  
