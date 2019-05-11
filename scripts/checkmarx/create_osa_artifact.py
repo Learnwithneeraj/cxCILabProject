@@ -10,20 +10,69 @@ def create_json_file(output):
     file.close()
 #-----------------------------------------------------------------------------------------------------
 def convert_json(output):
-    
+    osaReport = {}
     vulnList = []
+
+    osaReport['version'] = "2.0"
 
     for result in output:
         vulnElement = {}
 
-        vulnElement['tool'] = "CxOSA"
+        vulnElement['category'] = "dependency_scanning"
         vulnElement['message'] = result['description']
-        vulnElement['url'] = result['url']
         vulnElement['cve'] = result['cveName']
-        vulnElement['file'] = result['sourceFileName']
-        vulnElement['priority'] = result['severity']['name']
+        vulnElement['severity'] = result['severity']
+        vulnElement['solution'] = "To DO"
+        
+        scanner = {}
+        scanner['id'] = "Checkmarx"
+        scanner['name'] = "Checkmarx"
                     
+        vulnElement['scanner'] = scanner
+        
+        location = {}
+        location['file'] = result['sourceFileName']
+
+        dependency = {}
+        package = {}
+        package['name'] = "To DO"
+
+        dependency['package'] = package
+        location['dependency'] = dependency
+        location['version'] = "To do"
+
+        vulnElement['location'] = location
+        
+        identifiersList = []
+
+        identifiers= {}
+        identifiers['type'] = "cve"
+        identifiers['name'] = result['cveName']
+        identifiers['value'] = result['cveName']
+        identifiers['url'] = result['url']
+
+        identifiersList.append(identifiers)
+        
+        vulnElement['identifiers'] = identifiersList
+        
+        linksList = []
+
+        links= {}
+        
+        links['url'] = "To do"
+        
+        identifiersList.append(links)
+        
+        vulnElement['links'] =linksList
+        
+        #vulnElement['priority'] = result['severity']['name']
+
         vulnList.append(vulnElement)
+
+    osaReport['vulnerabilities'] = vulnList
+
+    remediations = []
+    osaReport['remediations'] = remediations 
 
     return (json.dumps(vulnList))
 
