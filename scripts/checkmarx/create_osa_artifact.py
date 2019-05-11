@@ -61,9 +61,9 @@ def convert_json(output):
         
         links['url'] = "To do"
         
-        identifiersList.append(links)
+        linksList.append(links)
         
-        vulnElement['links'] =linksList
+        vulnElement['links'] = linksList
         
         #vulnElement['priority'] = result['severity']['name']
 
