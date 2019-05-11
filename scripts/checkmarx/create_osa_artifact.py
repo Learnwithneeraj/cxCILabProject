@@ -74,7 +74,7 @@ def convert_json(output):
     remediations = []
     osaReport['remediations'] = remediations 
 
-    return (json.dumps(vulnList))
+    return (json.dumps(osaReport))
 
 #-----------------------------------------------------------------------------------------------------
 
