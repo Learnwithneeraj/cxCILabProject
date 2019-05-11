@@ -6,7 +6,7 @@
 # Feel free to fork and make your own
 # =============================================================================
 
-include: '.checkmarx-helpers.yml'
+include: '.checkmarx.yml'
   
 stages:
   - checkmarx scan
