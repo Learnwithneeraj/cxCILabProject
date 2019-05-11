@@ -1,4 +1,4 @@
-# [WORK IN PROGRESS] cx_app_two
+# [WORK IN PROGRESS] cx_app_three
 
 Demo of an advanced Checkmarx integration into Gitlab: how to run a CxSAST and/or CxOSA scan in Gitlab pipeline integrated with the Security Dashboard
 
