@@ -24,46 +24,43 @@ def convert_json(output):
         vulnElement['severity'] = result['severity']
         vulnElement['solution'] = "To DO"
         
-        scanner = {}
-        scanner['id'] = "Checkmarx"
-        scanner['name'] = "Checkmarx"
+        #scanner = {}
+        #scanner['id'] = "Checkmarx"
+        #scanner['name'] = "Checkmarx"
                     
-        vulnElement['scanner'] = scanner
+        #vulnElement['scanner'] = scanner
         
-        location = {}
-        location['file'] = result['sourceFileName']
+        #location = {}
+        #location['file'] = result['sourceFileName']
 
-        dependency = {}
-        package = {}
-        package['name'] = "To DO"
+        #dependency = {}
+        #package = {}
+        #package['name'] = "To DO"
 
-        dependency['package'] = package
-        location['dependency'] = dependency
-        location['version'] = "To do"
+        #dependency['package'] = package
+        #location['dependency'] = dependency
+        #location['version'] = "To do"
 
-        vulnElement['location'] = location
+        #vulnElement['location'] = location
         
-        identifiersList = []
+        #identifiersList = []
 
-        identifiers= {}
-        identifiers['type'] = "cve"
-        identifiers['name'] = result['cveName']
-        identifiers['value'] = result['cveName']
-        identifiers['url'] = result['url']
+        #identifiers= {}
+        #identifiers['type'] = "cve"
+        #identifiers['name'] = result['cveName']
+        #identifiers['value'] = result['cveName']
+        #identifiers['url'] = result['url']
 
-        identifiersList.append(identifiers)
+        #identifiersList.append(identifiers)
         
-        vulnElement['identifiers'] = identifiersList
+        #vulnElement['identifiers'] = identifiersList
         
-        linksList = []
-
-        links= {}
+        #linksList = []
+        #links= {}
+        #links['url'] = "To do"
+        #linksList.append(links)
         
-        links['url'] = "To do"
-        
-        linksList.append(links)
-        
-        vulnElement['links'] = linksList
+        #vulnElement['links'] = linksList
         
         #vulnElement['priority'] = result['severity']['name']
 
