@@ -44,8 +44,6 @@ variables:
     - break_build
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
     - python scripts/checkmarx/create_osa_artifact.py ~/cxosa_report.json
-    - ls -la
-    - cat gl-dependency-scanning-report.json
   dependencies: []
   artifacts:
     reports:
@@ -68,8 +66,7 @@ variables:
     - break_build
     - python scripts/checkmarx/create_sast_artifact.py ~/cxsast_report.xml
     - python scripts/checkmarx/create_osa_artifact.py ~/cxosa_report.json
-    - ls -la
-    - cat gl-dependency-scanning-report.json
+
   dependencies: []
   artifacts:
     reports:
