@@ -9,7 +9,7 @@ variables:
     # CX_PASSWORD: mandatory, recommended to be stored as environment variable
     # CX_SERVER_URI: mandatory, recommended to be stored as environment variable
     CX_PROJECT_NAME: "$CI_PROJECT_NAME" # mandatory, for example: "CxGitlabDemo"
-    CX_TEAM_ID: "CxServer\\SP\\Company\\gitlab\\" #mandatory, For example: "CxServer\\SP\\Engineers\\CxTeam\\"
+    CX_TEAM_ID: "CxServer\\SP\\Company\\Users\\" #mandatory, For example: "CxServer\\SP\\Engineers\\CxTeam\\"
     
     CX_MODE: "CxSAST+CxOSA" # Can be "CxSAST+CxOSA", "CxSAST", "CxOSA"
     CX_ASYNC: "false" # For Async mode. Default is "false"
